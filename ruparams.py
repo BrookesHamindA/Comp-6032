@@ -14,7 +14,7 @@ numDays = 1    # number of days to run
 # you can change the DisplaySize to be bigger if you want larger-size objects on-screen
 displaySize = (1024,768)
 trafficOn = False
-recordFares = False # turn this on to append to faretypes.csv for more fare data
+recordFares = True # turn this on to append to faretypes.csv for more fare data
 
 # taxi fleet configuration (start points chosen to minimize congestion)
 taxi_configs = [
