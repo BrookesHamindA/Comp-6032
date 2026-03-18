@@ -212,13 +212,9 @@ class Dispatcher:
     # ----------------------------------------------------------------------------------------------------------------
 
     """ HERE IS THE PART THAT YOU NEED TO MODIFY
-      """
+    """
 
-    """this internal method decides a dynamic cost for the fare, taking into account estimated
-         travel time, expected pickup delay, and local congestion. The goal is to balance
-         profitability with a high probability that the fare will accept the price and not cancel.
-      """
-   def _costFare(self, fare):
+    def _costFare(self, fare):
         # Add predictor if not exists
         if not hasattr(self, '_predictor'):
             self._predictor = FareTypePredictor()
