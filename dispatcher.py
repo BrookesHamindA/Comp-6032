@@ -2,9 +2,8 @@ import math
 import numpy
 import heapq
 
+from fare_predictor import FareTypePredictor
 
-# a data container for all pertinent information related to fares. (Should we
-# add an underway flag and require taxis to acknowledge collection to the dispatcher?)
 class FareEntry:
     def __init__(self, origin, dest, time, price=0, taxiIndex=-1):
         self.origin = origin
