@@ -533,92 +533,114 @@ class Taxi:
 
     # Improved bidding logic with better handling of edge cases and gridlock
     # Task 3a: Intelligent bidding with workload awareness and probabilistic reasoning
-    def _bidOnFare(self, time, origin, destination, price):
-        if self._world is None or self._loc is None:
+   # Improved bidding logic with better handling of edge cases and gridlock
+# Task 3a: Intelligent bidding with workload awareness and probabilistic reasoning
+def _bidOnFare(self, time, origin, destination, price):
+    if self._world is None or self._loc is None:
+        return False
+
+    origin_node = self._world.getNode(origin[0], origin[1])
+    dest_node = self._world.getNode(destination[0], destination[1])
+    if origin_node is None or dest_node is None:
+        return False
+
+    # --------------------------------------
+    # NEW: Crank fare detection
+    # --------------------------------------
+    # Check for impossible or extremely short trips (crank fares)
+    distance = self._world.distance2Node(origin_node, dest_node)
+    if distance < 1.0:  # Same node or adjacent - suspicious
+        # 50% chance it's a crank fare - reject
+        import random
+        if random.random() < 0.5:
             return False
+    
+    # Check for prices that are way too high (another crank sign)
+    if price > 200:
+        return False
+    
+    # Check for prices that are way too low (another crank sign)
+    if price < 2:
+        return False
+    # --------------------------------------
 
-        origin_node = self._world.getNode(origin[0], origin[1])
-        dest_node = self._world.getNode(destination[0], destination[1])
-        if origin_node is None or dest_node is None:
-            return False
+    # allow bidding while conducting a trip, but avoid stacking too many future allocations
+    allocated_fares = [
+        (key, fare)
+        for key, fare in self._availableFares.items()
+        if fare.allocated
+    ]
 
-        # allow bidding while conducting a trip, but avoid stacking too many future allocations
-        allocated_fares = [
-            (key, fare)
-            for key, fare in self._availableFares.items()
-            if fare.allocated
-        ]
+    # Forecast when we will become available for another pickup
+    projected_node = self._loc
+    projected_time = self._world.simTime
 
-        # Forecast when we will become available for another pickup
-        projected_node = self._loc
-        projected_time = self._world.simTime
-
-        if self._passenger is not None:
-            passenger_dest = self._world.getNode(
-                self._passenger.destination[0], self._passenger.destination[1]
-            )
-            trip_time = self._world.travelTime(projected_node, passenger_dest)
-            if trip_time < 0:
-                trip_time = self._world.distance2Node(projected_node, passenger_dest)
-            projected_time += trip_time
-            projected_node = passenger_dest
-
-        for fare_key, fare in allocated_fares:
-            pickup = (fare_key[1], fare_key[2])
-            pickup_node = self._world.getNode(pickup[0], pickup[1])
-            drop_node = self._world.getNode(fare.destination[0], fare.destination[1])
-            if pickup_node is None or drop_node is None:
-                continue
-            to_pickup = self._world.travelTime(projected_node, pickup_node)
-            if to_pickup < 0:
-                to_pickup = self._world.distance2Node(projected_node, pickup_node)
-            to_drop = self._world.travelTime(pickup_node, drop_node)
-            if to_drop < 0:
-                to_drop = self._world.distance2Node(pickup_node, drop_node)
-            projected_time += to_pickup + to_drop
-            projected_node = drop_node
-
-        # Evaluate travel time from projected availability to this fare
-        if projected_node is None:
-            return False
-
-        travel_to_origin = self._world.travelTime(projected_node, origin_node)
-        if travel_to_origin < 0:
-            travel_to_origin = self._world.distance2Node(projected_node, origin_node)
-
-        travel_to_destination = self._world.travelTime(origin_node, dest_node)
-        if travel_to_destination < 0:
-            travel_to_destination = self._world.distance2Node(origin_node, dest_node)
-
-        # reject if taxi is stuck in heavy traffic at current location
-        if hasattr(self._loc, "traffic") and self._loc.traffic > 6:
-            return False
-
-        # ensure we can reach the fare before they abandon
-        time_elapsed = self._world.simTime - time
-        time_remaining = self._maxFareWait - time_elapsed
-        eta_to_pickup = (projected_time - self._world.simTime) + travel_to_origin
-        will_arrive_on_time = time_remaining > eta_to_pickup * 0.9
-
-        # profitability: account for total time spent until drop-off
-        total_service_time = eta_to_pickup + travel_to_destination
-        trip_revenue = price
-        trip_costs = max(1, total_service_time)  # £1 per minute baseline
-        profit_margin = trip_revenue - trip_costs
-        roi = profit_margin / trip_costs
-
-        # capital guardrail: do not overcommit if balance low
-        can_afford_trip = self._account > total_service_time * 0.3
-
-        # prefer fares that are not excessively far away
-        reasonable_pickup_distance = travel_to_origin < max(
-            50, self._maxFareWait * 0.9
+    if self._passenger is not None:
+        passenger_dest = self._world.getNode(
+            self._passenger.destination[0], self._passenger.destination[1]
         )
+        trip_time = self._world.travelTime(projected_node, passenger_dest)
+        if trip_time < 0:
+            trip_time = self._world.distance2Node(projected_node, passenger_dest)
+        projected_time += trip_time
+        projected_node = passenger_dest
 
-        return (
-            will_arrive_on_time
-            and profit_margin > 1
-            and roi > 0.02
-            and can_afford_trip
-            and reasonable_pickup_distance
-        )
+    for fare_key, fare in allocated_fares:
+        pickup = (fare_key[1], fare_key[2])
+        pickup_node = self._world.getNode(pickup[0], pickup[1])
+        drop_node = self._world.getNode(fare.destination[0], fare.destination[1])
+        if pickup_node is None or drop_node is None:
+            continue
+        to_pickup = self._world.travelTime(projected_node, pickup_node)
+        if to_pickup < 0:
+            to_pickup = self._world.distance2Node(projected_node, pickup_node)
+        to_drop = self._world.travelTime(pickup_node, drop_node)
+        if to_drop < 0:
+            to_drop = self._world.distance2Node(pickup_node, drop_node)
+        projected_time += to_pickup + to_drop
+        projected_node = drop_node
+
+    # Evaluate travel time from projected availability to this fare
+    if projected_node is None:
+        return False
+
+    travel_to_origin = self._world.travelTime(projected_node, origin_node)
+    if travel_to_origin < 0:
+        travel_to_origin = self._world.distance2Node(projected_node, origin_node)
+
+    travel_to_destination = self._world.travelTime(origin_node, dest_node)
+    if travel_to_destination < 0:
+        travel_to_destination = self._world.distance2Node(origin_node, dest_node)
+
+    # reject if taxi is stuck in heavy traffic at current location
+    if hasattr(self._loc, "traffic") and self._loc.traffic > 6:
+        return False
+
+    # ensure we can reach the fare before they abandon
+    time_elapsed = self._world.simTime - time
+    time_remaining = self._maxFareWait - time_elapsed
+    eta_to_pickup = (projected_time - self._world.simTime) + travel_to_origin
+    will_arrive_on_time = time_remaining > eta_to_pickup * 0.9
+
+    # profitability: account for total time spent until drop-off
+    total_service_time = eta_to_pickup + travel_to_destination
+    trip_revenue = price
+    trip_costs = max(1, total_service_time)  # £1 per minute baseline
+    profit_margin = trip_revenue - trip_costs
+    roi = profit_margin / trip_costs
+
+    # capital guardrail: do not overcommit if balance low
+    can_afford_trip = self._account > total_service_time * 0.3
+
+    # prefer fares that are not excessively far away
+    reasonable_pickup_distance = travel_to_origin < max(
+        50, self._maxFareWait * 0.9
+    )
+
+    return (
+        will_arrive_on_time
+        and profit_margin > 1
+        and roi > 0.02
+        and can_afford_trip
+        and reasonable_pickup_distance
+    )
