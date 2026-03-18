@@ -366,42 +366,40 @@ class Taxi:
             self._nextDirection = nextPose[1]
 
     # recvMsg handles various dispatcher messages.
-  # recvMsg handles various dispatcher messages.
-def recvMsg(self, msg, **args):
-    timeOfMsg = self._world.simTime
-    # A new fare has requested service: add it to the list of availables
-    if msg == self.FARE_ADVICE:
-        callTime = self._world.simTime
-        self._availableFares[callTime, args["origin"][0], args["origin"][1]] = (
-            FareInfo(args["destination"], args["price"])
-        )
-        return
-    # the dispatcher has approved our bid: mark the fare as ours
-    elif msg == self.FARE_ALLOC:
-        for fare in self._availableFares.items():
-            if fare[0][1] == args["origin"][0] and fare[0][2] == args["origin"][1]:
+    def recvMsg(self, msg, **args):
+        timeOfMsg = self._world.simTime
+        # A new fare has requested service: add it to the list of availables
+        if msg == self.FARE_ADVICE:
+            callTime = self._world.simTime
+            self._availableFares[callTime, args["origin"][0], args["origin"][1]] = (
+                FareInfo(args["destination"], args["price"])
+            )
+            return
+        # the dispatcher has approved our bid: mark the fare as ours
+        elif msg == self.FARE_ALLOC:
+            for fare in self._availableFares.items():
+                if fare[0][1] == args["origin"][0] and fare[0][2] == args["origin"][1]:
+                    if (
+                        fare[1].destination[0] == args["destination"][0]
+                        and fare[1].destination[1] == args["destination"][1]
+                    ):
+                        fare[1].allocated = True
+                        return
+        # we just dropped off a fare and received payment, add it to the account
+        elif msg == self.FARE_PAY:
+            self._account += args["amount"]
+            faulty_tracker.record_fare_completed(self.number, args["amount"])
+            return
+        # a fare cancelled before being collected, remove it from the list
+        elif msg == self.FARE_CANCEL:
+            for fare in self._availableFares.items():
                 if (
-                    fare[1].destination[0] == args["destination"][0]
-                    and fare[1].destination[1] == args["destination"][1]
-                ):
-                    fare[1].allocated = True
+                    fare[0][1] == args["origin"][0] and fare[0][2] == args["origin"][1]
+                ):  # and fare[1].allocated:
+                    faulty_tracker.record_cancellation(self.number)
+                    del self._availableFares[fare[0]]
                     return
-    # we just dropped off a fare and received payment, add it to the account
-    elif msg == self.FARE_PAY:
-        self._account += args["amount"]
-        # >>>>>>> ADD THIS LINE RIGHT HERE <<<<<<<
-        faulty_tracker.record_fare_completed(self.number, args["amount"])
-        return
-    # a fare cancelled before being collected, remove it from the list
-    elif msg == self.FARE_CANCEL:
-        for fare in self._availableFares.items():
-            if (
-                fare[0][1] == args["origin"][0] and fare[0][2] == args["origin"][1]
-            ):  # and fare[1].allocated:
-                # >>>>>>> ADD THIS LINE RIGHT HERE <<<<<<<
-                faulty_tracker.record_cancellation(self.number)
-                del self._availableFares[fare[0]]
-                return
+
     # _____________________________________________________________________________________________________________________
 
     """ HERE IS THE PART THAT YOU NEED TO MODIFY
@@ -537,117 +535,115 @@ def recvMsg(self, msg, **args):
 
     # Improved bidding logic with better handling of edge cases and gridlock
     # Task 3a: Intelligent bidding with workload awareness and probabilistic reasoning
-   # Improved bidding logic with better handling of edge cases and gridlock
-# Task 3a: Intelligent bidding with workload awareness and probabilistic reasoning
-def _bidOnFare(self, time, origin, destination, price):
-    if self._world is None or self._loc is None:
-        return False
-
-    origin_node = self._world.getNode(origin[0], origin[1])
-    dest_node = self._world.getNode(destination[0], destination[1])
-    if origin_node is None or dest_node is None:
-        return False
-
-    # --------------------------------------
-    # NEW: Crank fare detection
-    # --------------------------------------
-    # Check for impossible or extremely short trips (crank fares)
-    distance = self._world.distance2Node(origin_node, dest_node)
-    if distance < 1.0:  # Same node or adjacent - suspicious
-        # 50% chance it's a crank fare - reject
-        import random
-        if random.random() < 0.5:
+    def _bidOnFare(self, time, origin, destination, price):
+        if self._world is None or self._loc is None:
             return False
-    
-    # Check for prices that are way too high (another crank sign)
-    if price > 200:
-        return False
-    
-    # Check for prices that are way too low (another crank sign)
-    if price < 2:
-        return False
-    # --------------------------------------
 
-    # allow bidding while conducting a trip, but avoid stacking too many future allocations
-    allocated_fares = [
-        (key, fare)
-        for key, fare in self._availableFares.items()
-        if fare.allocated
-    ]
+        origin_node = self._world.getNode(origin[0], origin[1])
+        dest_node = self._world.getNode(destination[0], destination[1])
+        if origin_node is None or dest_node is None:
+            return False
 
-    # Forecast when we will become available for another pickup
-    projected_node = self._loc
-    projected_time = self._world.simTime
+        # --------------------------------------
+        # NEW: Crank fare detection
+        # --------------------------------------
+        # Check for impossible or extremely short trips (crank fares)
+        distance = self._world.distance2Node(origin_node, dest_node)
+        if distance < 1.0:  # Same node or adjacent - suspicious
+            # 50% chance it's a crank fare - reject
+            import random
+            if random.random() < 0.5:
+                return False
+        
+        # Check for prices that are way too high (another crank sign)
+        if price > 200:
+            return False
+        
+        # Check for prices that are way too low (another crank sign)
+        if price < 2:
+            return False
+        # --------------------------------------
 
-    if self._passenger is not None:
-        passenger_dest = self._world.getNode(
-            self._passenger.destination[0], self._passenger.destination[1]
+        # allow bidding while conducting a trip, but avoid stacking too many future allocations
+        allocated_fares = [
+            (key, fare)
+            for key, fare in self._availableFares.items()
+            if fare.allocated
+        ]
+
+        # Forecast when we will become available for another pickup
+        projected_node = self._loc
+        projected_time = self._world.simTime
+
+        if self._passenger is not None:
+            passenger_dest = self._world.getNode(
+                self._passenger.destination[0], self._passenger.destination[1]
+            )
+            trip_time = self._world.travelTime(projected_node, passenger_dest)
+            if trip_time < 0:
+                trip_time = self._world.distance2Node(projected_node, passenger_dest)
+            projected_time += trip_time
+            projected_node = passenger_dest
+
+        for fare_key, fare in allocated_fares:
+            pickup = (fare_key[1], fare_key[2])
+            pickup_node = self._world.getNode(pickup[0], pickup[1])
+            drop_node = self._world.getNode(fare.destination[0], fare.destination[1])
+            if pickup_node is None or drop_node is None:
+                continue
+            to_pickup = self._world.travelTime(projected_node, pickup_node)
+            if to_pickup < 0:
+                to_pickup = self._world.distance2Node(projected_node, pickup_node)
+            to_drop = self._world.travelTime(pickup_node, drop_node)
+            if to_drop < 0:
+                to_drop = self._world.distance2Node(pickup_node, drop_node)
+            projected_time += to_pickup + to_drop
+            projected_node = drop_node
+
+        # Evaluate travel time from projected availability to this fare
+        if projected_node is None:
+            return False
+
+        travel_to_origin = self._world.travelTime(projected_node, origin_node)
+        if travel_to_origin < 0:
+            travel_to_origin = self._world.distance2Node(projected_node, origin_node)
+
+        travel_to_destination = self._world.travelTime(origin_node, dest_node)
+        if travel_to_destination < 0:
+            travel_to_destination = self._world.distance2Node(origin_node, dest_node)
+
+        # reject if taxi is stuck in heavy traffic at current location
+        if hasattr(self._loc, "traffic") and self._loc.traffic > 6:
+            return False
+
+        # ensure we can reach the fare before they abandon
+        time_elapsed = self._world.simTime - time
+        time_remaining = self._maxFareWait - time_elapsed
+        eta_to_pickup = (projected_time - self._world.simTime) + travel_to_origin
+        will_arrive_on_time = time_remaining > eta_to_pickup * 0.9
+
+        # profitability: account for total time spent until drop-off
+        total_service_time = eta_to_pickup + travel_to_destination
+        trip_revenue = price
+        trip_costs = max(1, total_service_time)  # £1 per minute baseline
+        profit_margin = trip_revenue - trip_costs
+        roi = profit_margin / trip_costs
+
+        # capital guardrail: do not overcommit if balance low
+        can_afford_trip = self._account > total_service_time * 0.3
+
+        # prefer fares that are not excessively far away
+        reasonable_pickup_distance = travel_to_origin < max(
+            50, self._maxFareWait * 0.9
         )
-        trip_time = self._world.travelTime(projected_node, passenger_dest)
-        if trip_time < 0:
-            trip_time = self._world.distance2Node(projected_node, passenger_dest)
-        projected_time += trip_time
-        projected_node = passenger_dest
 
-    for fare_key, fare in allocated_fares:
-        pickup = (fare_key[1], fare_key[2])
-        pickup_node = self._world.getNode(pickup[0], pickup[1])
-        drop_node = self._world.getNode(fare.destination[0], fare.destination[1])
-        if pickup_node is None or drop_node is None:
-            continue
-        to_pickup = self._world.travelTime(projected_node, pickup_node)
-        if to_pickup < 0:
-            to_pickup = self._world.distance2Node(projected_node, pickup_node)
-        to_drop = self._world.travelTime(pickup_node, drop_node)
-        if to_drop < 0:
-            to_drop = self._world.distance2Node(pickup_node, drop_node)
-        projected_time += to_pickup + to_drop
-        projected_node = drop_node
-
-    # Evaluate travel time from projected availability to this fare
-    if projected_node is None:
-        return False
-
-    travel_to_origin = self._world.travelTime(projected_node, origin_node)
-    if travel_to_origin < 0:
-        travel_to_origin = self._world.distance2Node(projected_node, origin_node)
-
-    travel_to_destination = self._world.travelTime(origin_node, dest_node)
-    if travel_to_destination < 0:
-        travel_to_destination = self._world.distance2Node(origin_node, dest_node)
-
-    # reject if taxi is stuck in heavy traffic at current location
-    if hasattr(self._loc, "traffic") and self._loc.traffic > 6:
-        return False
-
-    # ensure we can reach the fare before they abandon
-    time_elapsed = self._world.simTime - time
-    time_remaining = self._maxFareWait - time_elapsed
-    eta_to_pickup = (projected_time - self._world.simTime) + travel_to_origin
-    will_arrive_on_time = time_remaining > eta_to_pickup * 0.9
-
-    # profitability: account for total time spent until drop-off
-    total_service_time = eta_to_pickup + travel_to_destination
-    trip_revenue = price
-    trip_costs = max(1, total_service_time)  # £1 per minute baseline
-    profit_margin = trip_revenue - trip_costs
-    roi = profit_margin / trip_costs
-
-    # capital guardrail: do not overcommit if balance low
-    can_afford_trip = self._account > total_service_time * 0.3
-
-    # prefer fares that are not excessively far away
-    reasonable_pickup_distance = travel_to_origin < max(
-        50, self._maxFareWait * 0.9
-    )
-
-    return (
-        will_arrive_on_time
-        and profit_margin > 1
-        and roi > 0.02
-        and can_afford_trip
-        and reasonable_pickup_distance
-    )
+        return (
+            will_arrive_on_time
+            and profit_margin > 1
+            and roi > 0.02
+            and can_afford_trip
+            and reasonable_pickup_distance
+        )
 
 # -------------------------------------------------------------------------------------
 # Task 1a: Faulty taxi tracking (add this at the bottom of taxi.py)
