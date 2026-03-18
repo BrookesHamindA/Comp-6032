@@ -218,44 +218,46 @@ class Dispatcher:
          travel time, expected pickup delay, and local congestion. The goal is to balance
          profitability with a high probability that the fare will accept the price and not cancel.
       """
-   
-      def _costFare(self, fare):
-    # Add predictor if not exists
-    if not hasattr(self, '_predictor'):
-        self._predictor = FareTypePredictor()
-        try:
-            self._predictor.train()
-        except:
-            print("No training data yet, using default pricing")
-    
-    # Predict fare type
-    fare_type = self._predictor.predict_fare_type(
-        fare.origin, fare.destination, fare.calltime
-    )
-    
-    # Get base travel time
-    origin_node = self._parent.getNode(fare.origin[0], fare.origin[1])
-    dest_node = self._parent.getNode(fare.destination[0], fare.destination[1])
-    travel_time = self._parent.travelTime(origin_node, dest_node)
-    
-    # Price differently based on predicted type
-    if fare_type == 'rich':
-        # Rich fares pay more
-        base = 10 + travel_time * 3
-    elif fare_type == 'budget':
-        # Budget fares need lower prices
-        base = 3 + travel_time * 0.8
-    elif fare_type == 'hurry':
-        # Hurry fares will pay for speed
-        base = 8 + travel_time * 2.5
-    else:  # normal
-        base = 5 + travel_time * 1.5
+   def _costFare(self, fare):
+        # Add predictor if not exists
+        if not hasattr(self, '_predictor'):
+            self._predictor = FareTypePredictor()
+            try:
+                self._predictor.train()
+            except:
+                print("No training data yet, using default pricing")
         
-    # Adjust for congestion
-    if origin_node and origin_node.traffic > origin_node.maxTraffic * 0.7:
-        base *= 0.9  # discount if area is congested
+        # Predict fare type
+        fare_type = self._predictor.predict_fare_type(
+            fare.origin, fare.destination, fare.calltime
+        )
         
-    return max(5, min(50, base))
+        # Get base travel time
+        origin_node = self._parent.getNode(fare.origin[0], fare.origin[1])
+        dest_node = self._parent.getNode(fare.destination[0], fare.destination[1])
+        travel_time = self._parent.travelTime(origin_node, dest_node)
+        if travel_time < 0:
+            return 150
+            
+        # Price differently based on predicted type
+        if fare_type == 'rich':
+            # Rich fares pay more
+            base = 10 + travel_time * 3
+        elif fare_type == 'budget':
+            # Budget fares need lower prices
+            base = 3 + travel_time * 0.8
+        elif fare_type == 'hurry':
+            # Hurry fares will pay for speed
+            base = 8 + travel_time * 2.5
+        else:  # normal
+            base = 5 + travel_time * 1.5
+            
+        # Adjust for congestion
+        if origin_node and origin_node.traffic > origin_node.maxTraffic * 0.7:
+            base *= 0.9  # discount if area is congested
+            
+        return max(5, min(50, base))
+
     def _allocateFare(self, origin, destination, time):
         fare_entry = self._fareBoard[origin][destination][time]
         bidders = fare_entry.bidders
