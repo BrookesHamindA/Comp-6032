@@ -366,38 +366,42 @@ class Taxi:
             self._nextDirection = nextPose[1]
 
     # recvMsg handles various dispatcher messages.
-    def recvMsg(self, msg, **args):
-        timeOfMsg = self._world.simTime
-        # A new fare has requested service: add it to the list of availables
-        if msg == self.FARE_ADVICE:
-            callTime = self._world.simTime
-            self._availableFares[callTime, args["origin"][0], args["origin"][1]] = (
-                FareInfo(args["destination"], args["price"])
-            )
-            return
-        # the dispatcher has approved our bid: mark the fare as ours
-        elif msg == self.FARE_ALLOC:
-            for fare in self._availableFares.items():
-                if fare[0][1] == args["origin"][0] and fare[0][2] == args["origin"][1]:
-                    if (
-                        fare[1].destination[0] == args["destination"][0]
-                        and fare[1].destination[1] == args["destination"][1]
-                    ):
-                        fare[1].allocated = True
-                        return
-        # we just dropped off a fare and received payment, add it to the account
-        elif msg == self.FARE_PAY:
-            self._account += args["amount"]
-            return
-        # a fare cancelled before being collected, remove it from the list
-        elif msg == self.FARE_CANCEL:
-            for fare in self._availableFares.items():
+  # recvMsg handles various dispatcher messages.
+def recvMsg(self, msg, **args):
+    timeOfMsg = self._world.simTime
+    # A new fare has requested service: add it to the list of availables
+    if msg == self.FARE_ADVICE:
+        callTime = self._world.simTime
+        self._availableFares[callTime, args["origin"][0], args["origin"][1]] = (
+            FareInfo(args["destination"], args["price"])
+        )
+        return
+    # the dispatcher has approved our bid: mark the fare as ours
+    elif msg == self.FARE_ALLOC:
+        for fare in self._availableFares.items():
+            if fare[0][1] == args["origin"][0] and fare[0][2] == args["origin"][1]:
                 if (
-                    fare[0][1] == args["origin"][0] and fare[0][2] == args["origin"][1]
-                ):  # and fare[1].allocated:
-                    del self._availableFares[fare[0]]
+                    fare[1].destination[0] == args["destination"][0]
+                    and fare[1].destination[1] == args["destination"][1]
+                ):
+                    fare[1].allocated = True
                     return
-
+    # we just dropped off a fare and received payment, add it to the account
+    elif msg == self.FARE_PAY:
+        self._account += args["amount"]
+        # >>>>>>> ADD THIS LINE RIGHT HERE <<<<<<<
+        faulty_tracker.record_fare_completed(self.number, args["amount"])
+        return
+    # a fare cancelled before being collected, remove it from the list
+    elif msg == self.FARE_CANCEL:
+        for fare in self._availableFares.items():
+            if (
+                fare[0][1] == args["origin"][0] and fare[0][2] == args["origin"][1]
+            ):  # and fare[1].allocated:
+                # >>>>>>> ADD THIS LINE RIGHT HERE <<<<<<<
+                faulty_tracker.record_cancellation(self.number)
+                del self._availableFares[fare[0]]
+                return
     # _____________________________________________________________________________________________________________________
 
     """ HERE IS THE PART THAT YOU NEED TO MODIFY
