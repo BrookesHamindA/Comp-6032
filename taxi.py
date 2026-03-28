@@ -388,7 +388,7 @@ class Taxi:
         # we just dropped off a fare and received payment, add it to the account
         elif msg == self.FARE_PAY:
             self._account += args["amount"]
-            faulty_tracker.record_fare_completed(self.number, args["amount"])
+            
             return
         # a fare cancelled before being collected, remove it from the list
         elif msg == self.FARE_CANCEL:
@@ -396,7 +396,7 @@ class Taxi:
                 if (
                     fare[0][1] == args["origin"][0] and fare[0][2] == args["origin"][1]
                 ):  # and fare[1].allocated:
-                    faulty_tracker.record_cancellation(self.number)
+                   
                     del self._availableFares[fare[0]]
                     return
 
@@ -478,10 +478,10 @@ class Taxi:
                     # If this path to neighbor is better than previously found
                     if neighbor not in g_scores or tentative_g < g_scores[neighbor]:
                         g_scores[neighbor] = tentative_g
-                   # Manhattan distance heuristic is used because the road network is grid-based.
-                   # It is admissible (never overestimates) and computationally cheap.
-                   # Although diagonal moves are possible, Manhattan works because each
-                   # diagonal move costs the same as Manhattan distance (1 step per coordinate change).
+                        # Manhattan distance heuristic is used because the road network is grid-based.
+                        # It is admissible (never overestimates) and computationally cheap.
+                        # Although diagonal moves are possible, Manhattan works because each
+                        # diagonal move costs the same as Manhattan distance (1 step per coordinate change).
                         # Calculate h_score (Manhattan distance heuristic)
                         h_score = abs(neighbor[0] - destination[0]) + abs(
                             neighbor[1] - destination[1]
