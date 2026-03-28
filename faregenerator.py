@@ -303,27 +303,6 @@ class RichParamGenerator(NormalParamGenerator):
           else:
              return self._costparams['scale']*self._costGen.beta(a=self._costparams['a'], b=self._costparams['b'])
 
-# the Crank fare type calls up and asks for a lift but just disappears without trace and never notifies the
-# Dispatcher that it has abandoned. Otherwise it behaves just like a Normal fare type.
-class CrankParamGenerator(NormalParamGenerator):
-
-      def __init__(self, world, origin, destination=None, **distparams):
-
-          super().__init__(world=world, origin=origin, destination=destination, **distparams)
-          ''' the **distparams dictionary should (or can) contain:
-              1) a, b, and scale parameters for a beta distribution on cost (['costparams']), typically for total cost
-              2) a -1 maximum wait time ['waitparams']
-              3) a dict of num: (position, sigma, weight) parameters for a mixture-of-2D-Gaussians distribution on destination ['destparams']              
-          '''
-
-      @property
-      def fareType(self):
-          return 'crank'
-
-      # a crank fare will never wait but just (silently) abandons
-      def getMaxWait(self, distance_based=False, distance_weight=None, **waitparams):
-          return -1
-
 class HurryParamGenerator(FareParamGenerator):
 
       def __init__(self, world, origin, destination=None, **distparams):
@@ -652,8 +631,6 @@ class FareGenerator:
                     tempFareTypes.append(RandomParamGenerator(world=self._world, origin=self._parent, **ftype[1]))
                  elif ftype[0] == 'flat':
                     tempFareTypes.append(FlatParamGenerator(world=self._world, origin=self._parent, **ftype[1]))
-                 elif ftype[0] == 'crank':
-                    tempFareTypes.append(CrankParamGenerator(world=self._world, origin=self._parent, **ftype[1]))
                  else:
                     raise ValueError("Invalid fare type: {0}".format(ftype[0]))
           # renormalise likelihoods to get a true probability
