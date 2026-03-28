@@ -402,8 +402,6 @@ class Taxi:
 
     # _____________________________________________________________________________________________________________________
 
-    """ HERE IS THE PART THAT YOU NEED TO MODIFY
-      """
 
     # A* pathfinding implementation with traffic awareness
     # Replaces the naive DFS with optimal pathfinding using Manhattan distance heuristic
@@ -549,6 +547,9 @@ class Taxi:
         # --------------------------------------
         # Check for impossible or extremely short trips (crank fares)
         distance = self._world.distance2Node(origin_node, dest_node)
+        # Crank fare detection: extremely short trips (<1 unit) are suspicious.
+        # Reject 50% of such trips to balance between catching crank fares
+        # and avoiding false positives (genuine very short trips).
         if distance < 1.0:  # Same node or adjacent - suspicious
             # 50% chance it's a crank fare - reject
             import random
@@ -678,7 +679,7 @@ class FaultyTaxiTracker:
         for taxi_num, stats in self.stats.items():
             if stats['fares'] < avg_fares * 0.5:  # 50% worse than average
                 return taxi_num
-                
+            
         # If none, find lowest revenue
         worst_taxi = min(self.stats.items(), key=lambda x: x[1]['revenue'])
         return worst_taxi[0]
