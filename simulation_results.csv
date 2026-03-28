@@ -1,3 +1,0 @@
-run_id,algorithm,timestamp,simulation_minutes,fares_generated,fares_completed,fares_cancelled,cancellation_rate_%,total_revenue_gbp,avg_revenue_per_taxi_gbp,avg_path_computation_ms,num_path_computations
-1,astar,2026-03-18T09:41:28.021834,1440,540,49,425,78.7,1238.4,309.6,0.348,288
-1,astar,2026-03-18T09:43:58.299943,1440,597,93,432,72.36,2143.8,535.95,0.211,209
