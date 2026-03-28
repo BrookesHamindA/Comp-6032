@@ -9,14 +9,19 @@ Multi-agent taxi dispatch simulation implementing intelligent pathfinding and fa
 - **Multi-Factor Dispatcher**: Balances proximity, workload, capital, and fairness
 - **Dynamic Pricing**: Rule-based pricing based on distance, travel time, and congestion
 - **Faulty Taxi Detection**: Identifies underperforming taxis
+- 
+## Results (3 Runs Final Summary)
 
-## Results
+| Run | Fares Generated | Fares Completed | Fares Cancelled | Cancellation Rate | Total Revenue |
+|-----|-----------------|-----------------|-----------------|-------------------|---------------|
+| 1 | 541 | 44 | 414 | 76.52% | £776.52 |
+| 2 | 574 | 118 | 385 | 67.07% | £2,167.74 |
+| 3 | 550 | 111 | 373 | 67.82% | £2,008.44 |
+| **Average** | **555** | **91** | **391** | **70.47%** | **£1,650.90** |
 
-- Fares Completed: ( will run simulation to get results)
-- Cancellation Rate: (will run simulation to get results)
-- Total Revenue: (will run simulation to get results)
-- Avg Revenue per Taxi: (will run simulation to get results)
-- Avg Path Computation: (will run simulation to get results)
+- **Avg Path Computation**: 0.175 ms
+- **Total Path Computations**: 926 across all runs
+
 
 ## Requirements
 
