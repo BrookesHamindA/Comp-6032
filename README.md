@@ -23,6 +23,8 @@ Multi-agent taxi dispatch simulation implementing intelligent pathfinding and fa
 - **Avg Path Computation**: 0.225 ms
 - **Faulty Taxi Detected**: Taxi 102 excluded after 10+ fares with >50% cancellation rate
 
+- **Note**: Run 4 has lower completions because the dispatcher identified Taxi 102 as faulty and excluded it from allocations. This demonstrates the detection is working correctly, even though total revenue decreased.
+
 ## Key Improvements
 
 - **A* Pathfinding**: Traffic-aware optimal routing using Manhattan heuristic (avg 0.225ms computation)
