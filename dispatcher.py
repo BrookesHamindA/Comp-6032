@@ -283,7 +283,10 @@ class Dispatcher:
             # Skip if already identified as faulty
             if self._faulty_taxi_idx == taxiIdx:
                 continue
-            
+            # Faulty taxi detection:
+            # - Need at least 10 fares for statistical significance
+            # - 50% cancellation threshold identifies PsychoTaxi (which kills passengers)
+            # - Once detected, taxi is excluded from all future allocations
             # Check performance if we have enough data (more than 10 fares)
             stats = self._taxi_stats.get(taxiIdx, {'fares': 0, 'cancellations': 0})
             if stats['fares'] > 10:
@@ -353,6 +356,12 @@ class Dispatcher:
 
             urgencyBoost = max(0, 100 - pickup_with_wait * 2)
 
+        # Weighted scoring for fare allocation:
+        # - Proximity (35%): most important - get passenger quickly
+        # - Workload (20%): avoid overloading busy taxis
+        # - Capital (20%): keep taxis with low balance active
+        # - Urgency (15%): prioritize fares that have been waiting
+        # - Fairness penalty (10%): prevent same taxi from getting all fares
             totalScore = (
                 proximityScore * 0.35
                 + workloadScore * 0.2
