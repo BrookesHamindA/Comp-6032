@@ -22,6 +22,23 @@ Multi-agent taxi dispatch simulation implementing intelligent pathfinding and fa
 - **Avg Path Computation**: 0.175 ms
 - **Total Path Computations**: 926 across all runs
 
+## Task 3b: Ethical and Commercial Deployment Analysis
+
+### Privacy Concerns
+The system collects passenger origin, destination, and trip times. This data must be anonymized and stored securely. Passengers should have opt-out options.
+
+### Algorithmic Fairness
+The dispatcher's multi-factor scoring (proximity, workload, capital) could inadvertently discriminate if weights are biased. Further testing with diverse fare distributions is needed to ensure equitable service.
+
+### Safety and Accountability
+The faulty PsychoTaxi detection demonstrates the need for robust monitoring. In production, a human-in-the-loop would be required for safety-critical decisions.
+
+### Economic Impact
+Autonomous taxis will displace human drivers. A responsible deployment would include retraining programs and phased implementation.
+
+### Transparency
+Our rule-based pricing (distance, travel time, congestion) is explainable, unlike black-box ML. This builds passenger trust.
+
 
 ## Requirements
 
