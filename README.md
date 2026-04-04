@@ -25,6 +25,28 @@ Multi-agent taxi dispatch simulation implementing intelligent pathfinding and fa
 
 - **Note**: Run 4 has lower completions because the dispatcher identified Taxi 102 as faulty and excluded it from allocations. This demonstrates the detection is working correctly, even though total revenue decreased.
 
+## Note on Fare Accounting
+
+The difference between fares generated and (completed + cancelled) represents 
+**crank fares** - fake requests that disappear without formal cancellation. 
+This is expected behavior in the PsychoUber simulation.
+
+| Run | Generated | Completed + Cancelled | Missing (Crank Fares) |
+|-----|-----------|----------------------|----------------------|
+| 1 | 541 | 458 | 83 |
+| 2 | 574 | 503 | 71 |
+| 3 | 550 | 484 | 66 |
+| 4 | 550 | 474 | 76 |
+| 5 | 531 | 460 | 71 |
+| 6 | 531 | 466 | 65 |
+| 7 | 556 | 483 | 73 |
+| 8 | 528 | 460 | 68 |
+| 9 | 523 | 457 | 66 |
+| 10 | 552 | 469 | 83 |
+| **Average** | **544** | **471** | **73** |
+
+Approximately **13% of generated fares are crank fares** that self-cancel.
+
 ## Key Improvements
 
 - **A* Pathfinding**: Traffic-aware optimal routing using Manhattan heuristic (avg 0.225ms computation)
